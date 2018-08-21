@@ -12,11 +12,7 @@ public class Main {
 		//			Thread.sleep(1000);
 		//			game.repaint();
 		//		}
-		while(true) {
-				
-				
-				game.repaint();
-		}
+		game.start();
 	}
 
 }

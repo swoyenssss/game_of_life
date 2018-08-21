@@ -6,132 +6,204 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
+import java.awt.event.MouseWheelListener;
 
-import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 
 
-public class GamePanel extends JPanel{
+public class GamePanel extends JPanel implements Runnable{
 
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
 	private boolean[][] gameState;
-	private int rows = 70;
-	private int columns = 80;
-	private int boxSize = 12;
-	private int margin = 10;
-	private final int HEIGHT = 1000;
-	private final int WIDTH = 1000;
+	private int rows = 150;
+	private int columns = 150;
+	private int positionX = 0;
+	private int positionY = 0;
+	private int HEIGHT = 1000;
+	private int WIDTH = 1000;
+	private int boxHeight = 10;
+	private int boxWidth = 10;
 	public boolean started;
-	private JButton tickButton = new JButton();
-	private JPanel gamePanel;
+
 	private int sleep = 300;
 	private int generation = 0;
 	private JLabel generationLabel;
 	private JLabel aliveLabel;
+
+	private int mouseX;
+	private int mouseY;
+
+	private int tempX;
+	private int tempY;
+	private int tempBoxX;
+	private int tempBoxY;
+	
+	private Color deadCellColor;
+	private Color aliveCellColor;
 	
 	public GamePanel() {	
-		
+
 		this.setSize(HEIGHT,WIDTH);
 		this.setVisible(true);
-		
-		
+		this.setBackground(new Color(240,240,240));
+
+		deadCellColor = Color.GREEN;
+		aliveCellColor = Color.WHITE;
 		createGameState();
 		//populateRandomCells();
 		this.setDoubleBuffered(true);
 		createBlinker();
 		//createButton();
-		tickButton.setBounds(900,900,50,50);
-		
+
 		started = false;
 		//this.add(tickButton);
+
+		this.addMouseWheelListener(e->{
+			int steps = e.getWheelRotation();
+							
+			tempBoxX = getBoxX(e.getX()); 
+			tempBoxY = getBoxY(e.getY());
+			
+			tempX = tempBoxX * boxHeight;
+			tempY = tempBoxY * boxWidth;
+			
+			
+			if(steps == 1) {
+				if(boxHeight > 5 || boxWidth > 5) {
+					boxHeight -= 1;
+					boxWidth -= 1;
+					
+					
+					
+				}
+			}
+			else {
+				boxHeight += 1;
+				boxWidth +=1;
+				
+
+			
+				
+			}
+			repaint();
+		});
+
 		this.addMouseListener(new MouseListener() {
 
 			@Override
 			public void mouseClicked(MouseEvent e) {
-				System.out.println(e.getX() + ", " + e.getY());
+				
 				try {
-				changeBoxClicked(e.getX(),e.getY());
+					changeBoxClicked(e.getX(),e.getY());
 				}catch(Exception ex) {
-					
+
 				}
+				
 			}
 
 			@Override
-			public void mouseEntered(MouseEvent arg0) {}
+			public void mouseEntered(MouseEvent e) {			
+			}
 
 			@Override
 			public void mouseExited(MouseEvent arg0) {}
 
 			@Override
-			public void mousePressed(MouseEvent arg0) {
-				
+			public void mousePressed(MouseEvent e) {
+				mouseX = e.getX();
+				mouseY = e.getY();
 			}
 
 			@Override
-			public void mouseReleased(MouseEvent arg0) {}
+			public void mouseReleased(MouseEvent e) {
+			}
+
+		});
+		
+		
+		this.addMouseMotionListener(new MouseMotionListener() {
+
+			@Override
+			public void mouseDragged(MouseEvent e) {
+				
+				positionX -= (mouseX - e.getX());
+				positionY -= (mouseY - e.getY());
+				mouseX = e.getX();
+				mouseY = e.getY();
+			}
+
+			@Override
+			public void mouseMoved(MouseEvent arg0) {			
+			}
 			
 		});
+	}
+
+	public void setDeadCellColor(Color color) {
+		this.deadCellColor = color;
+	}
+	
+	public void setAliveColor(Color color) {
+		this.aliveCellColor = color;
 	}
 	
 	public void setGenerationLabel(JLabel label) {
 		this.generationLabel = label;
 	}
-	
+
 	public void setAliveLabel(JLabel label) {
 		this.aliveLabel = label;
 	}
 
 	private void changeBoxClicked(int x, int y) {
-		int tempX = x - margin;
-		int tempY = y - margin;
-		
-		int boxX = tempX/boxSize;
-		int boxY = tempY/boxSize;
-		
+		int tempX = x - positionX;
+		int tempY = y - positionY;
+
+		int boxX = tempX/boxWidth;
+		int boxY = tempY/boxHeight;
+
 		gameState[boxY][boxX] = (gameState[boxY][boxX] == true) ? false: true;
 		repaint();
-		
-		
 	}
 	
+	private int getBoxX(int x) {
+		int tempX = x - positionX;
+		return tempX/boxWidth;
+	}
+	
+	private int getBoxY(int y) {
+		int tempY = y - positionY;
+		return tempY/boxWidth;
+	}
+	
+	public void pauseGame() {
+		started = false;
+	}
+
 	public void startGame() {
 		started = true;
 	}
-	
+
 	public void clearBoard() {
+		generation = 0;
+		started = false;
 		for(int i=0;i<rows;i++) {
 			for(int j=0;j<columns;j++) {
 				gameState[i][j] = false;
 			}
 		}
 	}
-	
+
 	public void setSleep(int sleep) {
 		this.sleep = sleep;
 	}
-	
-	
-	
-	private void createButton() {
-		gamePanel = new JPanel();
-		gamePanel.setLayout(null);
-		this.add(gamePanel);
 
-		tickButton = new JButton("tick");
-		tickButton.setBounds(250,250, 120,30);
-		tickButton.addActionListener(e->{
-			tick();
-			started = true;
-
-		});
-
-		gamePanel.add(tickButton);
-	}
 	private void createBlinker() {
 		gameState[1][1] = true;
 		gameState[1][2] = true;
@@ -145,6 +217,35 @@ public class GamePanel extends JPanel{
 				gameState[i][j] = false;
 			}
 		}
+	}
+	
+	public void createInfiniteGrowth() {
+		rows = 500;
+		columns = 500;
+		positionX = 0;
+		positionY = 0;
+		HEIGHT = 5000;
+		WIDTH = 5000;
+		gameState= new boolean[rows][columns];
+		clearBoard();
+		
+		positionX = (int) (-HEIGHT/2.45);
+		positionY = (int) (-WIDTH/2.45);
+		
+		int midRow = rows/2;
+		int midCol = columns/2;
+		gameState[midRow][midCol] = true;
+		gameState[midRow][midCol+2] = true;
+		gameState[midRow-1][midCol+2] = true;
+		gameState[midRow-2][midCol+4] = true;
+		gameState[midRow-3][midCol+4] = true;
+		gameState[midRow-4][midCol+4] = true;
+		gameState[midRow-3][midCol+6] = true;
+		gameState[midRow-4][midCol+6] = true;
+		gameState[midRow-4][midCol+7] = true;
+		gameState[midRow-5][midCol+6] = true;
+		
+		
 	}
 
 	public void printGameState() {
@@ -164,15 +265,15 @@ public class GamePanel extends JPanel{
 			for(int j=0;j<columns;j++) {
 				if(gameState[i][j] == true) alive++;
 			}
-			
+
 		}
 		return alive;
 	}
-	
+
 	public int getGeneration() {
 		return this.generation;
 	}
-	
+
 	public void paint(Graphics g) {
 		super.paint(g);
 		Graphics2D g2d = (Graphics2D)g;
@@ -185,12 +286,13 @@ public class GamePanel extends JPanel{
 
 	private void update(Graphics2D g2d) {
 		//drawGrids(g2d);
-		
+
 		paintCells(g2d);
 		generationLabel.setText(generation + "");
 		aliveLabel.setText(getAliveStates()+ "");
 		if(started)	{
 			try {
+				Thread.currentThread();
 				Thread.sleep(this.sleep);
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
@@ -198,9 +300,12 @@ public class GamePanel extends JPanel{
 			}
 			tick();
 		}
+		else {
+		}
 	}
 
 	public void populateRandomCells() {
+		clearBoard();
 		for(int i=0;i<rows;i++) {
 			for(int j=0;j<columns;j++) {
 				if(Math.random() < 0.2) {
@@ -219,11 +324,11 @@ public class GamePanel extends JPanel{
 			for(int j=0;j<columns;j++) {
 				if(gameState[i][j] == true) {
 					g2d.setColor(Color.green);
-					g2d.fillRect(margin + 1 + boxSize * j, margin + 1 + boxSize * i, boxSize - 2, boxSize - 2);
+					g2d.fillRect(positionX + 1 + boxWidth * j, positionY + 1 + boxHeight * i, boxWidth - 1 , boxHeight - 1);
 				}
 				else if(gameState[i][j] == false) {
 					g2d.setColor(Color.white);
-					g2d.fillRect(margin + 1 + boxSize * j, margin + 1 + boxSize * i, boxSize - 2, boxSize - 2);
+					g2d.fillRect(positionX + 1 + boxWidth * j, positionY + 1 + boxHeight * i, boxWidth - 1 , boxHeight - 1);
 				}
 			}
 
@@ -231,20 +336,6 @@ public class GamePanel extends JPanel{
 		}
 	}
 
-	private int getTotalNeighbors(int row, int col) {
-		// Corners
-		if((col % columns == columns - 1 || col % columns == 0) && (row % rows == 0 || row % rows==rows-1)) {
-			return 3;
-		}
-
-		// Sides
-		if((col % columns == columns - 1 || col % columns == 0) || (row % rows == 0 || row % rows==rows-1)) {
-			return 5;
-		}
-
-		// Everything else
-		return 8;
-	}
 
 	private int getActiveNeighbors(boolean[][] state,int row,int col) {
 		int activeNeighbors = 0;
@@ -389,10 +480,23 @@ public class GamePanel extends JPanel{
 		return tempState;
 	}
 
-	
+	public void createGliders() {
+		clearBoard();
+		gameState[2][3] = true;
+		gameState[3][4] = true;
+		gameState[4][2] = true;
+		gameState[4][3] = true;
+		gameState[4][4] = true;
+	}
+
 	public void stopGame() {
 		started = false;
 		generation = 0;
+	}
+
+	@Override
+	public void run() {
+		repaint();
 	}
 
 }

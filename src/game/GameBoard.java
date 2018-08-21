@@ -20,7 +20,9 @@ public class GameBoard extends JFrame{
 	 */
 	private static final long serialVersionUID = 1L;
 	private GamePanel gamePanel;
+	private Runnable gameThread;
 	private JButton startButton;
+	private JButton pauseButton;
 	private JButton stopButton;
 	private JPanel buttonPanel;
 	private JLabel sleepLabel;
@@ -35,6 +37,7 @@ public class GameBoard extends JFrame{
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		this.setLocationRelativeTo(null);
 		gamePanel = new GamePanel();
+		gameThread = new Thread((gamePanel));
 		this.setLayout(new BorderLayout());
 		this.add(gamePanel);
 		
@@ -54,7 +57,7 @@ public class GameBoard extends JFrame{
 		buttonPanel.setLayout(new FlowLayout());
 		
 		
-		String[] optionStrings = {"Clear","Random"};
+		String[] optionStrings = {"Clear","Random","Gliders","InfiniteGrowth"};
 		
 		optionBox = new JComboBox<String>(optionStrings);
 		optionBox.addActionListener(e->{
@@ -66,10 +69,14 @@ public class GameBoard extends JFrame{
 				gamePanel.clearBoard();
 			}
 			else if(option.equals("Random")) {
-				gamePanel.clearBoard();
 				gamePanel.populateRandomCells();
 			}
-			
+			else if(option.equals("Gliders")) {
+				gamePanel.createGliders();
+			}
+			else if(option.equals("InfiniteGrowth")) {
+				gamePanel.createInfiniteGrowth();
+			}
 		});	
 	
 		
@@ -89,13 +96,17 @@ public class GameBoard extends JFrame{
 			}
 		});
 		
+		pauseButton = new JButton();
+		pauseButton.setText("Pause");
+		pauseButton.addActionListener(e->{
+			gamePanel.pauseGame();
+		});
+		
 		
 		stopButton = new JButton();
 		stopButton.setText("Stop");
 		stopButton.addActionListener(e->{
-			
 			gamePanel.stopGame();
-			
 		});
 		
 		
@@ -106,6 +117,7 @@ public class GameBoard extends JFrame{
 		buttonPanel.add(sleepLabel);
 		buttonPanel.add(sleepText);
 		buttonPanel.add(startButton);
+		buttonPanel.add(pauseButton);
 		buttonPanel.add(stopButton);
 		
 		JPanel generationPanel = new JPanel();
@@ -135,8 +147,11 @@ public class GameBoard extends JFrame{
 		this.add(bottomPanel,BorderLayout.SOUTH);
 	}
 	
-	public void update() {
-		gamePanel.repaint();
+	public void start() {
+		while(true) {
+			gameThread.run();
+			
+		}
 	}
 
 }

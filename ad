@@ -1,0 +1,520 @@
+[1mdiff --git a/bin/game/GameBoard.class b/bin/game/GameBoard.class[m
+[1mindex 63a2ee2..e111e45 100644[m
+Binary files a/bin/game/GameBoard.class and b/bin/game/GameBoard.class differ
+[1mdiff --git a/bin/game/GamePanel$1.class b/bin/game/GamePanel$1.class[m
+[1mindex 2426fea..5439d63 100644[m
+Binary files a/bin/game/GamePanel$1.class and b/bin/game/GamePanel$1.class differ
+[1mdiff --git a/bin/game/GamePanel.class b/bin/game/GamePanel.class[m
+[1mindex f436d0f..1c10882 100644[m
+Binary files a/bin/game/GamePanel.class and b/bin/game/GamePanel.class differ
+[1mdiff --git a/bin/game_of_life/Main.class b/bin/game_of_life/Main.class[m
+[1mindex afc956b..9cda8d5 100644[m
+Binary files a/bin/game_of_life/Main.class and b/bin/game_of_life/Main.class differ
+[1mdiff --git a/src/game/GameBoard.java b/src/game/GameBoard.java[m
+[1mindex 0f16ca8..75bbb2a 100644[m
+[1m--- a/src/game/GameBoard.java[m
+[1m+++ b/src/game/GameBoard.java[m
+[36m@@ -20,7 +20,9 @@[m [mpublic class GameBoard extends JFrame{[m
+ 	 */[m
+ 	private static final long serialVersionUID = 1L;[m
+ 	private GamePanel gamePanel;[m
+[32m+[m	[32mprivate Runnable gameThread;[m[41m[m
+ 	private JButton startButton;[m
+[32m+[m	[32mprivate JButton pauseButton;[m[41m[m
+ 	private JButton stopButton;[m
+ 	private JPanel buttonPanel;[m
+ 	private JLabel sleepLabel;[m
+[36m@@ -35,6 +37,7 @@[m [mpublic class GameBoard extends JFrame{[m
+ 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);[m
+ 		this.setLocationRelativeTo(null);[m
+ 		gamePanel = new GamePanel();[m
+[32m+[m		[32mgameThread = new Thread((gamePanel));[m[41m[m
+ 		this.setLayout(new BorderLayout());[m
+ 		this.add(gamePanel);[m
+ 		[m
+[36m@@ -54,7 +57,7 @@[m [mpublic class GameBoard extends JFrame{[m
+ 		buttonPanel.setLayout(new FlowLayout());[m
+ 		[m
+ 		[m
+[31m-		String[] optionStrings = {"Clear","Random"};[m
+[32m+[m		[32mString[] optionStrings = {"Clear","Random","Gliders","InfiniteGrowth"};[m[41m[m
+ 		[m
+ 		optionBox = new JComboBox<String>(optionStrings);[m
+ 		optionBox.addActionListener(e->{[m
+[36m@@ -66,10 +69,14 @@[m [mpublic class GameBoard extends JFrame{[m
+ 				gamePanel.clearBoard();[m
+ 			}[m
+ 			else if(option.equals("Random")) {[m
+[31m-				gamePanel.clearBoard();[m
+ 				gamePanel.populateRandomCells();[m
+ 			}[m
+[31m-			[m
+[32m+[m			[32melse if(option.equals("Gliders")) {[m[41m[m
+[32m+[m				[32mgamePanel.createGliders();[m[41m[m
+[32m+[m			[32m}[m[41m[m
+[32m+[m			[32melse if(option.equals("InfiniteGrowth")) {[m[41m[m
+[32m+[m				[32mgamePanel.createInfiniteGrowth();[m[41m[m
+[32m+[m			[32m}[m[41m[m
+ 		});	[m
+ 	[m
+ 		[m
+[36m@@ -89,13 +96,17 @@[m [mpublic class GameBoard extends JFrame{[m
+ 			}[m
+ 		});[m
+ 		[m
+[32m+[m		[32mpauseButton = new JButton();[m[41m[m
+[32m+[m		[32mpauseButton.setText("Pause");[m[41m[m
+[32m+[m		[32mpauseButton.addActionListener(e->{[m[41m[m
+[32m+[m			[32mgamePanel.pauseGame();[m[41m[m
+[32m+[m		[32m});[m[41m[m
+[32m+[m[41m		[m
+ 		[m
+ 		stopButton = new JButton();[m
+ 		stopButton.setText("Stop");[m
+ 		stopButton.addActionListener(e->{[m
+[31m-			[m
+ 			gamePanel.stopGame();[m
+[31m-			[m
+ 		});[m
+ 		[m
+ 		[m
+[36m@@ -106,6 +117,7 @@[m [mpublic class GameBoard extends JFrame{[m
+ 		buttonPanel.add(sleepLabel);[m
+ 		buttonPanel.add(sleepText);[m
+ 		buttonPanel.add(startButton);[m
+[32m+[m		[32mbuttonPanel.add(pauseButton);[m[41m[m
+ 		buttonPanel.add(stopButton);[m
+ 		[m
+ 		JPanel generationPanel = new JPanel();[m
+[36m@@ -135,8 +147,11 @@[m [mpublic class GameBoard extends JFrame{[m
+ 		this.add(bottomPanel,BorderLayout.SOUTH);[m
+ 	}[m
+ 	[m
+[31m-	public void update() {[m
+[31m-		gamePanel.repaint();[m
+[32m+[m	[32mpublic void start() {[m[41m[m
+[32m+[m		[32mwhile(true) {[m[41m[m
+[32m+[m			[32mgameThread.run();[m[41m[m
+[32m+[m[41m			[m
+[32m+[m		[32m}[m[41m[m
+ 	}[m
+ [m
+ }[m
+[1mdiff --git a/src/game/GamePanel.java b/src/game/GamePanel.java[m
+[1mindex c75cb97..fce5169 100644[m
+[1m--- a/src/game/GamePanel.java[m
+[1m+++ b/src/game/GamePanel.java[m
+[36m@@ -6,132 +6,204 @@[m [mimport java.awt.Graphics2D;[m
+ import java.awt.RenderingHints;[m
+ import java.awt.event.MouseEvent;[m
+ import java.awt.event.MouseListener;[m
+[32m+[m[32mimport java.awt.event.MouseMotionListener;[m[41m[m
+[32m+[m[32mimport java.awt.event.MouseWheelListener;[m[41m[m
+ [m
+[31m-import javax.swing.JButton;[m
+ import javax.swing.JLabel;[m
+ import javax.swing.JPanel;[m
+ [m
+ [m
+ [m
+[31m-public class GamePanel extends JPanel{[m
+[32m+[m[32mpublic class GamePanel extends JPanel implements Runnable{[m[41m[m
+ [m
+ 	/**[m
+ 	 * [m
+ 	 */[m
+ 	private static final long serialVersionUID = 1L;[m
+ 	private boolean[][] gameState;[m
+[31m-	private int rows = 70;[m
+[31m-	private int columns = 80;[m
+[31m-	private int boxSize = 12;[m
+[31m-	private int margin = 10;[m
+[31m-	private final int HEIGHT = 1000;[m
+[31m-	private final int WIDTH = 1000;[m
+[32m+[m	[32mprivate int rows = 150;[m[41m[m
+[32m+[m	[32mprivate int columns = 150;[m[41m[m
+[32m+[m	[32mprivate int positionX = 0;[m[41m[m
+[32m+[m	[32mprivate int positionY = 0;[m[41m[m
+[32m+[m	[32mprivate int HEIGHT = 1000;[m[41m[m
+[32m+[m	[32mprivate int WIDTH = 1000;[m[41m[m
+[32m+[m	[32mprivate int boxHeight = 10;[m[41m[m
+[32m+[m	[32mprivate int boxWidth = 10;[m[41m[m
+ 	public boolean started;[m
+[31m-	private JButton tickButton = new JButton();[m
+[31m-	private JPanel gamePanel;[m
+[32m+[m[41m[m
+ 	private int sleep = 300;[m
+ 	private int generation = 0;[m
+ 	private JLabel generationLabel;[m
+ 	private JLabel aliveLabel;[m
+[32m+[m[41m[m
+[32m+[m	[32mprivate int mouseX;[m[41m[m
+[32m+[m	[32mprivate int mouseY;[m[41m[m
+[32m+[m[41m[m
+[32m+[m	[32mprivate int tempX;[m[41m[m
+[32m+[m	[32mprivate int tempY;[m[41m[m
+[32m+[m	[32mprivate int tempBoxX;[m[41m[m
+[32m+[m	[32mprivate int tempBoxY;[m[41m[m
+[32m+[m[41m	[m
+[32m+[m	[32mprivate Color deadCellColor;[m[41m[m
+[32m+[m	[32mprivate Color aliveCellColor;[m[41m[m
+ 	[m
+ 	public GamePanel() {	[m
+[31m-		[m
+[32m+[m[41m[m
+ 		this.setSize(HEIGHT,WIDTH);[m
+ 		this.setVisible(true);[m
+[31m-		[m
+[31m-		[m
+[32m+[m		[32mthis.setBackground(new Color(240,240,240));[m[41m[m
+[32m+[m[41m[m
+[32m+[m		[32mdeadCellColor = Color.GREEN;[m[41m[m
+[32m+[m		[32maliveCellColor = Color.WHITE;[m[41m[m
+ 		createGameState();[m
+ 		//populateRandomCells();[m
+ 		this.setDoubleBuffered(true);[m
+ 		createBlinker();[m
+ 		//createButton();[m
+[31m-		tickButton.setBounds(900,900,50,50);[m
+[31m-		[m
+[32m+[m[41m[m
+ 		started = false;[m
+ 		//this.add(tickButton);[m
+[32m+[m[41m[m
+[32m+[m		[32mthis.addMouseWheelListener(e->{[m[41m[m
+[32m+[m			[32mint steps = e.getWheelRotation();[m[41m[m
+[32m+[m[41m							[m
+[32m+[m			[32mtempBoxX = getBoxX(e.getX());[m[41m [m
+[32m+[m			[32mtempBoxY = getBoxY(e.getY());[m[41m[m
+[32m+[m[41m			[m
+[32m+[m			[32mtempX = tempBoxX * boxHeight;[m[41m[m
+[32m+[m			[32mtempY = tempBoxY * boxWidth;[m[41m[m
+[32m+[m[41m			[m
+[32m+[m[41m			[m
+[32m+[m			[32mif(steps == 1) {[m[41m[m
+[32m+[m				[32mif(boxHeight > 5 || boxWidth > 5) {[m[41m[m
+[32m+[m					[32mboxHeight -= 1;[m[41m[m
+[32m+[m					[32mboxWidth -= 1;[m[41m[m
+[32m+[m[41m					[m
+[32m+[m[41m					[m
+[32m+[m[41m					[m
+[32m+[m				[32m}[m[41m[m
+[32m+[m			[32m}[m[41m[m
+[32m+[m			[32melse {[m[41m[m
+[32m+[m				[32mboxHeight += 1;[m[41m[m
+[32m+[m				[32mboxWidth +=1;[m[41m[m
+[32m+[m[41m				[m
+[32m+[m[41m[m
+[32m+[m[41m			[m
+[32m+[m[41m				[m
+[32m+[m			[32m}[m[41m[m
+[32m+[m			[32mrepaint();[m[41m[m
+[32m+[m		[32m});[m[41m[m
+[32m+[m[41m[m
+ 		this.addMouseListener(new MouseListener() {[m
+ [m
+ 			@Override[m
+ 			public void mouseClicked(MouseEvent e) {[m
+[31m-				System.out.println(e.getX() + ", " + e.getY());[m
+[32m+[m[41m				[m
+ 				try {[m
+[31m-				changeBoxClicked(e.getX(),e.getY());[m
+[32m+[m					[32mchangeBoxClicked(e.getX(),e.getY());[m[41m[m
+ 				}catch(Exception ex) {[m
+[31m-					[m
+[32m+[m[41m[m
+ 				}[m
+[32m+[m[41m				[m
+ 			}[m
+ [m
+ 			@Override[m
+[31m-			public void mouseEntered(MouseEvent arg0) {}[m
+[32m+[m			[32mpublic void mouseEntered(MouseEvent e) {[m[41m			[m
+[32m+[m			[32m}[m[41m[m
+ [m
+ 			@Override[m
+ 			public void mouseExited(MouseEvent arg0) {}[m
+ [m
+ 			@Override[m
+[31m-			public void mousePressed(MouseEvent arg0) {[m
+[32m+[m			[32mpublic void mousePressed(MouseEvent e) {[m[41m[m
+[32m+[m				[32mmouseX = e.getX();[m[41m[m
+[32m+[m				[32mmouseY = e.getY();[m[41m[m
+[32m+[m			[32m}[m[41m[m
+[32m+[m[41m[m
+[32m+[m			[32m@Override[m[41m[m
+[32m+[m			[32mpublic void mouseReleased(MouseEvent e) {[m[41m[m
+[32m+[m			[32m}[m[41m[m
+[32m+[m[41m[m
+[32m+[m		[32m});[m[41m[m
+[32m+[m[41m		[m
+[32m+[m[41m		[m
+[32m+[m		[32mthis.addMouseMotionListener(new MouseMotionListener() {[m[41m[m
+[32m+[m[41m[m
+[32m+[m			[32m@Override[m[41m[m
+[32m+[m			[32mpublic void mouseDragged(MouseEvent e) {[m[41m[m
+ 				[m
+[32m+[m				[32mpositionX -= (mouseX - e.getX());[m[41m[m
+[32m+[m				[32mpositionY -= (mouseY - e.getY());[m[41m[m
+[32m+[m				[32mmouseX = e.getX();[m[41m[m
+[32m+[m				[32mmouseY = e.getY();[m[41m[m
+ 			}[m
+ [m
+ 			@Override[m
+[31m-			public void mouseReleased(MouseEvent arg0) {}[m
+[32m+[m			[32mpublic void mouseMoved(MouseEvent arg0) {[m[41m			[m
+[32m+[m			[32m}[m[41m[m
+ 			[m
+ 		});[m
+ 	}[m
+[32m+[m[41m[m
+[32m+[m	[32mpublic void setDeadCellColor(Color color) {[m[41m[m
+[32m+[m		[32mthis.deadCellColor = color;[m[41m[m
+[32m+[m	[32m}[m[41m[m
+[32m+[m[41m	[m
+[32m+[m	[32mpublic void setAliveColor(Color color) {[m[41m[m
+[32m+[m		[32mthis.aliveCellColor = color;[m[41m[m
+[32m+[m	[32m}[m[41m[m
+ 	[m
+ 	public void setGenerationLabel(JLabel label) {[m
+ 		this.generationLabel = label;[m
+ 	}[m
+[31m-	[m
+[32m+[m[41m[m
+ 	public void setAliveLabel(JLabel label) {[m
+ 		this.aliveLabel = label;[m
+ 	}[m
+ [m
+ 	private void changeBoxClicked(int x, int y) {[m
+[31m-		int tempX = x - margin;[m
+[31m-		int tempY = y - margin;[m
+[31m-		[m
+[31m-		int boxX = tempX/boxSize;[m
+[31m-		int boxY = tempY/boxSize;[m
+[31m-		[m
+[32m+[m		[32mint tempX = x - positionX;[m[41m[m
+[32m+[m		[32mint tempY = y - positionY;[m[41m[m
+[32m+[m[41m[m
+[32m+[m		[32mint boxX = tempX/boxWidth;[m[41m[m
+[32m+[m		[32mint boxY = tempY/boxHeight;[m[41m[m
+[32m+[m[41m[m
+ 		gameState[boxY][boxX] = (gameState[boxY][boxX] == true) ? false: true;[m
+ 		repaint();[m
+[31m-		[m
+[31m-		[m
+ 	}[m
+ 	[m
+[32m+[m	[32mprivate int getBoxX(int x) {[m[41m[m
+[32m+[m		[32mint tempX = x - positionX;[m[41m[m
+[32m+[m		[32mreturn tempX/boxWidth;[m[41m[m
+[32m+[m	[32m}[m[41m[m
+[32m+[m[41m	[m
+[32m+[m	[32mprivate int getBoxY(int y) {[m[41m[m
+[32m+[m		[32mint tempY = y - positionY;[m[41m[m
+[32m+[m		[32mreturn tempY/boxWidth;[m[41m[m
+[32m+[m	[32m}[m[41m[m
+[32m+[m[41m	[m
+[32m+[m	[32mpublic void pauseGame() {[m[41m[m
+[32m+[m		[32mstarted = false;[m[41m[m
+[32m+[m	[32m}[m[41m[m
+[32m+[m[41m[m
+ 	public void startGame() {[m
+ 		started = true;[m
+ 	}[m
+[31m-	[m
+[32m+[m[41m[m
+ 	public void clearBoard() {[m
+[32m+[m		[32mgeneration = 0;[m[41m[m
+[32m+[m		[32mstarted = false;[m[41m[m
+ 		for(int i=0;i<rows;i++) {[m
+ 			for(int j=0;j<columns;j++) {[m
+ 				gameState[i][j] = false;[m
+ 			}[m
+ 		}[m
+ 	}[m
+[31m-	[m
+[32m+[m[41m[m
+ 	public void setSleep(int sleep) {[m
+ 		this.sleep = sleep;[m
+ 	}[m
+[31m-	[m
+[31m-	[m
+[31m-	[m
+[31m-	private void createButton() {[m
+[31m-		gamePanel = new JPanel();[m
+[31m-		gamePanel.setLayout(null);[m
+[31m-		this.add(gamePanel);[m
+[31m-[m
+[31m-		tickButton = new JButton("tick");[m
+[31m-		tickButton.setBounds(250,250, 120,30);[m
+[31m-		tickButton.addActionListener(e->{[m
+[31m-			tick();[m
+[31m-			started = true;[m
+[31m-[m
+[31m-		});[m
+ [m
+[31m-		gamePanel.add(tickButton);[m
+[31m-	}[m
+ 	private void createBlinker() {[m
+ 		gameState[1][1] = true;[m
+ 		gameState[1][2] = true;[m
+[36m@@ -146,6 +218,35 @@[m [mpublic class GamePanel extends JPanel{[m
+ 			}[m
+ 		}[m
+ 	}[m
+[32m+[m[41m	[m
+[32m+[m	[32mpublic void createInfiniteGrowth() {[m[41m[m
+[32m+[m		[32mrows = 500;[m[41m[m
+[32m+[m		[32mcolumns = 500;[m[41m[m
+[32m+[m		[32mpositionX = 0;[m[41m[m
+[32m+[m		[32mpositionY = 0;[m[41m[m
+[32m+[m		[32mHEIGHT = 5000;[m[41m[m
+[32m+[m		[32mWIDTH = 5000;[m[41m[m
+[32m+[m		[32mgameState= new boolean[rows][columns];[m[41m[m
+[32m+[m		[32mclearBoard();[m[41m[m
+[32m+[m[41m		[m
+[32m+[m		[32mpositionX = (int) (-HEIGHT/2.45);[m[41m[m
+[32m+[m		[32mpositionY = (int) (-WIDTH/2.45);[m[41m[m
+[32m+[m[41m		[m
+[32m+[m		[32mint midRow = rows/2;[m[41m[m
+[32m+[m		[32mint midCol = columns/2;[m[41m[m
+[32m+[m		[32mgameState[midRow][midCol] = true;[m[41m[m
+[32m+[m		[32mgameState[midRow][midCol+2] = true;[m[41m[m
+[32m+[m		[32mgameState[midRow-1][midCol+2] = true;[m[41m[m
+[32m+[m		[32mgameState[midRow-2][midCol+4] = true;[m[41m[m
+[32m+[m		[32mgameState[midRow-3][midCol+4] = true;[m[41m[m
+[32m+[m		[32mgameState[midRow-4][midCol+4] = true;[m[41m[m
+[32m+[m		[32mgameState[midRow-3][midCol+6] = true;[m[41m[m
+[32m+[m		[32mgameState[midRow-4][midCol+6] = true;[m[41m[m
+[32m+[m		[32mgameState[midRow-4][midCol+7] = true;[m[41m[m
+[32m+[m		[32mgameState[midRow-5][midCol+6] = true;[m[41m[m
+[32m+[m[41m		[m
+[32m+[m[41m		[m
+[32m+[m	[32m}[m[41m[m
+ [m
+ 	public void printGameState() {[m
+ 		for(int i=0;i<rows;i++) {[m
+[36m@@ -164,15 +265,15 @@[m [mpublic class GamePanel extends JPanel{[m
+ 			for(int j=0;j<columns;j++) {[m
+ 				if(gameState[i][j] == true) alive++;[m
+ 			}[m
+[31m-			[m
+[32m+[m[41m[m
+ 		}[m
+ 		return alive;[m
+ 	}[m
+[31m-	[m
+[32m+[m[41m[m
+ 	public int getGeneration() {[m
+ 		return this.generation;[m
+ 	}[m
+[31m-	[m
+[32m+[m[41m[m
+ 	public void paint(Graphics g) {[m
+ 		super.paint(g);[m
+ 		Graphics2D g2d = (Graphics2D)g;[m
+[36m@@ -185,12 +286,13 @@[m [mpublic class GamePanel extends JPanel{[m
+ [m
+ 	private void update(Graphics2D g2d) {[m
+ 		//drawGrids(g2d);[m
+[31m-		[m
+[32m+[m[41m[m
+ 		paintCells(g2d);[m
+ 		generationLabel.setText(generation + "");[m
+ 		aliveLabel.setText(getAliveStates()+ "");[m
+ 		if(started)	{[m
+ 			try {[m
+[32m+[m				[32mThread.currentThread();[m[41m[m
+ 				Thread.sleep(this.sleep);[m
+ 			} catch (InterruptedException e) {[m
+ 				// TODO Auto-generated catch block[m
+[36m@@ -198,9 +300,12 @@[m [mpublic class GamePanel extends JPanel{[m
+ 			}[m
+ 			tick();[m
+ 		}[m
+[32m+[m		[32melse {[m[41m[m
+[32m+[m		[32m}[m[41m[m
+ 	}[m
+ [m
+ 	public void populateRandomCells() {[m
+[32m+[m		[32mclearBoard();[m[41m[m
+ 		for(int i=0;i<rows;i++) {[m
+ 			for(int j=0;j<columns;j++) {[m
+ 				if(Math.random() < 0.2) {[m
+[36m@@ -219,11 +324,11 @@[m [mpublic class GamePanel extends JPanel{[m
+ 			for(int j=0;j<columns;j++) {[m
+ 				if(gameState[i][j] == true) {[m
+ 					g2d.setColor(Color.green);[m
+[31m-					g2d.fillRect(margin + 1 + boxSize * j, margin + 1 + boxSize * i, boxSize - 2, boxSize - 2);[m
+[32m+[m					[32mg2d.fillRect(positionX + 1 + boxWidth * j, positionY + 1 + boxHeight * i, boxWidth - 1 , boxHeight - 1);[m[41m[m
+ 				}[m
+ 				else if(gameState[i][j] == false) {[m
+ 					g2d.setColor(Color.white);[m
+[31m-					g2d.fillRect(margin + 1 + boxSize * j, margin + 1 + boxSize * i, boxSize - 2, boxSize - 2);[m
+[32m+[m					[32mg2d.fillRect(positionX + 1 + boxWidth * j, positionY + 1 + boxHeight * i, boxWidth - 1 , boxHeight - 1);[m[41m[m
+ 				}[m
+ 			}[m
+ [m
+[36m@@ -231,20 +336,6 @@[m [mpublic class GamePanel extends JPanel{[m
+ 		}[m
+ 	}[m
+ [m
+[31m-	private int getTotalNeighbors(int row, int col) {[m
+[31m-		// Corners[m
+[31m-		if((col % columns == columns - 1 || col % columns == 0) && (row % rows == 0 || row % rows==rows-1)) {[m
+[31m-			return 3;[m
+[31m-		}[m
+[31m-[m
+[31m-		// Sides[m
+[31m-		if((col % columns == columns - 1 || col % columns == 0) || (row % rows == 0 || row % rows==rows-1)) {[m
+[31m-			return 5;[m
+[31m-		}[m
+[31m-[m
+[31m-		// Everything else[m
+[31m-		return 8;[m
+[31m-	}[m
+ [m
+ 	private int getActiveNeighbors(boolean[][] state,int row,int col) {[m
+ 		int activeNeighbors = 0;[m
+[36m@@ -389,10 +480,23 @@[m [mpublic class GamePanel extends JPanel{[m
+ 		return tempState;[m
+ 	}[m
+ [m
+[31m-	[m
+[32m+[m	[32mpublic void createGliders() {[m[41m[m
+[32m+[m		[32mclearBoard();[m[41m[m
+[32m+[m		[32mgameState[2][3] = true;[m[41m[m
+[32m+[m		[32mgameState[3][4] = true;[m[41m[m
+[32m+[m		[32mgameState[4][2] = true;[m[41m[m
+[32m+[m		[32mgameState[4][3] = true;[m[41m[m
+[32m+[m		[32mgameState[4][4] = true;[m[41m[m
+[32m+[m	[32m}[m[41m[m
+[32m+[m[41m[m
+ 	public void stopGame() {[m
+ 		started = false;[m
+ 		generation = 0;[m
+ 	}[m
+ [m
+[32m+[m	[32m@Override[m[41m[m
+[32m+[m	[32mpublic void run() {[m[41m[m
+[32m+[m		[32mrepaint();[m[41m[m
+[32m+[m	[32m}[m[41m[m
+[32m+[m[41m[m
+ }[m
+[1mdiff --git a/src/game_of_life/Main.java b/src/game_of_life/Main.java[m
+[1mindex 5c0461b..da86330 100644[m
+[1m--- a/src/game_of_life/Main.java[m
+[1m+++ b/src/game_of_life/Main.java[m
+[36m@@ -12,11 +12,7 @@[m [mpublic class Main {[m
+ 		//			Thread.sleep(1000);[m
+ 		//			game.repaint();[m
+ 		//		}[m
+[31m-		while(true) {[m
+[31m-				[m
+[31m-				[m
+[31m-				game.repaint();[m
+[31m-		}[m
+[32m+[m		[32mgame.start();[m[41m[m
+ 	}[m
+ [m
+ }[m
