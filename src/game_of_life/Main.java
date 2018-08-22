@@ -7,11 +7,6 @@ public class Main {
 	public static void main(String[] args) throws InterruptedException {
 		GameBoard game = new GameBoard();
 		
-		//		while(true) {
-		//			game.printGameState();
-		//			Thread.sleep(1000);
-		//			game.repaint();
-		//		}
 		game.start();
 	}
 
